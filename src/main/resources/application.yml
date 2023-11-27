@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: user-service
+server:
+  port: 8080
+  forward-headers-strategy: framework
+user:
+  collection:
+    name: users
+resident:
+  collection:
+    name: residents
+service:
+  collection:
+    name: services
