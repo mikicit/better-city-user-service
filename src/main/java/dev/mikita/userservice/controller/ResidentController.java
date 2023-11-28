@@ -98,7 +98,7 @@ public class ResidentController {
         HttpEntity<?> httpEntity = new HttpEntity<>(headers);
 
         // Query
-        String uri = "http://issue-service/api/v1/issues/count?authorId=" + uid;
+        String uri = "http://issue-service-service.default.svc.cluster.local:8080/api/v1/issues/count?authorId=" + uid;
         ResponseEntity<CountResponseDto> response = restTemplate.exchange(
                 uri,
                 HttpMethod.GET,
@@ -207,7 +207,7 @@ public class ResidentController {
         HttpEntity<?> httpEntity = new HttpEntity<>(headers);
 
         // Query
-        String uri = "http://issue-service/api/v1/issues?authorId=" + token.getUid();
+        String uri = "http://issue-service-service.default.svc.cluster.local:8080/api/v1/issues?authorId=" + token.getUid();
         if (status != null) {
             uri += "&status=" + status;
         }
@@ -240,7 +240,7 @@ public class ResidentController {
         HttpEntity<?> httpEntity = new HttpEntity<>(headers);
 
         // Query
-        String uri = "http://issue-service/api/v1/issues/count?authorId=" + token.getUid();
+        String uri = "http://issue-service-service.default.svc.cluster.local:8080/api/v1/issues/count?authorId=" + token.getUid();
         ResponseEntity<CountResponseDto> response = restTemplate.exchange(
                 uri,
                 HttpMethod.GET,

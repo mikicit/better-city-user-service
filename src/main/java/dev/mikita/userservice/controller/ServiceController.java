@@ -145,7 +145,7 @@ public class ServiceController {
         HttpEntity<?> httpEntity = new HttpEntity<>(headers);
 
         // Query
-        String uri = "http://issue-service/api/v1/issues/reservations/count?serviceId=" + uid;
+        String uri = "http://issue-service-service.default.svc.cluster.local:8080/api/v1/issues/reservations/count?serviceId=" + uid;
         ResponseEntity<CountResponseDto> response = restTemplate.exchange(
                 uri,
                 HttpMethod.GET,
@@ -175,7 +175,7 @@ public class ServiceController {
         HttpEntity<?> httpEntity = new HttpEntity<>(headers);
 
         // Query
-        String uri = "http://issue-service/api/v1/issues/solutions/count?serviceId=" + uid;
+        String uri = "http://issue-service-service.default.svc.cluster.local:8080/api/v1/issues/solutions/count?serviceId=" + uid;
         ResponseEntity<CountResponseDto> response = restTemplate.exchange(
                 uri,
                 HttpMethod.GET,
