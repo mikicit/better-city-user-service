@@ -1,7 +1,6 @@
 package dev.mikita.userservice.aspect;
 
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import dev.mikita.userservice.annotation.FirebaseAuthorization;
 import jakarta.security.auth.message.AuthException;

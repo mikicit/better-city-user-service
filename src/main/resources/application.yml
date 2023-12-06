@@ -4,12 +4,18 @@ spring:
 server:
   port: 8080
   forward-headers-strategy: framework
-user:
-  collection:
-    name: users
 resident:
   collection:
     name: residents
 service:
   collection:
     name: services
+employee:
+  collection:
+    name: employees
+departments:
+  collection:
+    name: departments
+analysts:
+  collection:
+    name: analysts

@@ -3,6 +3,7 @@ package dev.mikita.userservice.repository;
 import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.QuerySnapshot;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
@@ -15,8 +16,7 @@ import dev.mikita.userservice.exception.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -26,7 +26,6 @@ import java.util.concurrent.ExecutionException;
 public class ResidentRepository {
     private final CollectionReference collectionReference;
     private final FirebaseAuth firebaseAuth;
-    private final Firestore firestore;
 
     /**
      * Instantiates a new Resident repository.
@@ -41,7 +40,6 @@ public class ResidentRepository {
                               @Value("${resident.collection.name}") String collectionName) {
         this.firebaseAuth = firebaseAuth;
         this.collectionReference = firestore.collection(collectionName);
-        this.firestore = firestore;
     }
 
     /**
@@ -56,27 +54,33 @@ public class ResidentRepository {
     public Resident find(String uid) throws FirebaseAuthException, ExecutionException, InterruptedException {
         UserRecord userRecord = firebaseAuth.getUser(uid);
 
-        if (userRecord.getCustomClaims().isEmpty() || !userRecord.getCustomClaims().get("role").toString().equals("ROLE_RESIDENT")) {
+        if (userRecord.getCustomClaims().isEmpty() || !userRecord.getCustomClaims().get("role").toString().equals("RESIDENT")) {
             throw NotFoundException.create("Resident", uid);
         }
 
-        DocumentSnapshot snapshot = collectionReference.document(uid).get().get();
+        return makeResident(userRecord, collectionReference.document(uid).get().get());
+    }
 
-        Resident resident = new Resident();
-        resident.setUid(userRecord.getUid());
-        resident.setEmail(userRecord.getEmail());
-        resident.setPhoto(userRecord.getPhotoUrl());
-        resident.setStatus(UserStatus.valueOf(userRecord.getCustomClaims().get("status").toString()));
-        resident.setFirstName(snapshot.getString("firstName"));
-        resident.setLastName(snapshot.getString("lastName"));
+    public List<Resident> findAll() {
+        List<Resident> residents = new ArrayList<>();
 
-        String role = userRecord.getCustomClaims().get("role").toString();
-        String enumName = role.replace("ROLE_", "").toUpperCase();
-        UserRole userRole = UserRole.valueOf(enumName);
+        try {
+            QuerySnapshot collection = collectionReference.get().get();
 
-        resident.setRole(userRole);
+            for (DocumentSnapshot snapshot : collection.getDocuments()) {
+                UserRecord userRecord = firebaseAuth.getUser(snapshot.getId());
 
-        return resident;
+                if (userRecord.getCustomClaims().isEmpty() || !userRecord.getCustomClaims().get("role").toString().equals("RESIDENT")) {
+                    continue;
+                }
+
+                residents.add(makeResident(userRecord, snapshot));
+            }
+
+            return residents;
+        } catch (Exception e) {
+            return residents;
+        }
     }
 
     /**
@@ -100,11 +104,7 @@ public class ResidentRepository {
         firebaseAuth.setCustomUserClaims(userRecord.getUid(), customClaims);
 
         // Set Firestore Document
-        Map<String, Object> data = new HashMap<>();
-        data.put("firstName", resident.getFirstName());
-        data.put("lastName", resident.getLastName());
-
-        collectionReference.document(userRecord.getUid()).set(data);
+        collectionReference.document(userRecord.getUid()).set(entityToMap(resident));
     }
 
     /**
@@ -114,34 +114,56 @@ public class ResidentRepository {
      * @return the resident
      * @throws FirebaseAuthException the firebase auth exception
      */
-    public Resident update(Resident resident) throws FirebaseAuthException {
+    public Resident update(Resident resident) throws FirebaseAuthException, ExecutionException, InterruptedException {
         UserRecord userRecord = firebaseAuth.getUser(resident.getUid());
 
-        // Update Firebase Auth User
-        UpdateRequest request = new UpdateRequest(userRecord.getUid())
-                .setEmail(resident.getEmail())
-                .setDisplayName(resident.getFirstName() + " " + resident.getLastName());
+        // Update User Record
+        UpdateRequest request = new UpdateRequest(userRecord.getUid());
+
+        if (!Objects.equals(resident.getFirstName() + " " + resident.getLastName(), userRecord.getDisplayName())) {
+            request.setDisplayName(resident.getFirstName() + " " + resident.getLastName());
+        }
+
+        if (!Objects.equals(resident.getEmail(), userRecord.getEmail())) {
+            request.setEmail(resident.getEmail());
+            request.setEmailVerified(false);
+        }
 
         if (resident.getPassword() != null) {
             request.setPassword(resident.getPassword());
         }
 
-        firebaseAuth.updateUser(request);
-
-        // Update Custom Claims
-        Map<String, Object> customClaims = new HashMap<>();
-        customClaims.put("role", UserRole.RESIDENT.toString());
-        customClaims.put("status", UserStatus.ACTIVE.toString());
-
-        firebaseAuth.setCustomUserClaims(userRecord.getUid(), customClaims);
+        if (!Objects.equals(resident.getPhoneNumber(), userRecord.getPhoneNumber())) {
+            request.setPhoneNumber(resident.getPhoneNumber());
+        }
 
         // Update Firestore Document
-        Map<String, Object> data = new HashMap<>();
-        data.put("firstName", resident.getFirstName());
+        DocumentSnapshot snapshot = collectionReference.document(userRecord.getUid()).get().get();
+        Map<String, Object> userData = new HashMap<>();
 
-        data.put("lastName", resident.getLastName());
+        if (!Objects.equals(resident.getFirstName(), snapshot.getString("firstName"))) {
+            userData.put("firstName", resident.getFirstName());
+        }
 
-        collectionReference.document(userRecord.getUid()).update(data);
+        if (!Objects.equals(resident.getLastName(), snapshot.getString("lastName"))) {
+            userData.put("lastName", resident.getLastName());
+        }
+
+        // Update Custom Claims
+        Map<String, Object> customClaims = new HashMap<>(userRecord.getCustomClaims());
+
+        if (!Objects.equals(resident.getStatus().toString(), customClaims.get("status").toString())) {
+            customClaims.put("status", resident.getStatus().toString());
+        }
+
+        // Update User Record
+        request.setCustomClaims(customClaims);
+        firebaseAuth.updateUser(request);
+
+        // Update Firestore Document
+        if (!userData.isEmpty()) {
+            collectionReference.document(userRecord.getUid()).update(userData);
+        }
 
         return resident;
     }
@@ -155,5 +177,28 @@ public class ResidentRepository {
     public void delete(String uid) throws FirebaseAuthException {
         firebaseAuth.deleteUser(uid);
         collectionReference.document(uid).delete();
+    }
+
+    private Resident makeResident(UserRecord userRecord, DocumentSnapshot snapshot) {
+        Resident resident = new Resident();
+
+        resident.setUid(userRecord.getUid());
+        resident.setEmail(userRecord.getEmail());
+        resident.setStatus(UserStatus.valueOf(userRecord.getCustomClaims().get("status").toString()));
+        resident.setPhoto(userRecord.getPhotoUrl());
+        resident.setRole(UserRole.valueOf(userRecord.getCustomClaims().get("role").toString()));
+        resident.setFirstName(snapshot.getString("firstName"));
+        resident.setLastName(snapshot.getString("lastName"));
+
+        return resident;
+    }
+
+    private Map<String, Object> entityToMap(Resident resident) {
+        Map<String, Object> data = new HashMap<>();
+
+        data.put("firstName", resident.getFirstName());
+        data.put("lastName", resident.getLastName());
+
+        return data;
     }
 }

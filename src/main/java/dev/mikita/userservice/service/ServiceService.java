@@ -1,11 +1,13 @@
 package dev.mikita.userservice.service;
 
 import com.google.firebase.auth.FirebaseAuthException;
-import dev.mikita.userservice.exception.NotFoundException;
 import dev.mikita.userservice.repository.ServiceRepository;
 import dev.mikita.userservice.entity.UserStatus;
+import org.modelmapper.Conditions;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -35,11 +37,11 @@ public class ServiceService {
      * @throws InterruptedException  the interrupted exception
      */
     public dev.mikita.userservice.entity.Service getService(String uid) throws FirebaseAuthException, ExecutionException, InterruptedException {
-        dev.mikita.userservice.entity.Service service = serviceRepository.find(uid);
-        if (service == null) {
-            throw new NotFoundException("User not found.");
-        }
-        return service;
+        return serviceRepository.find(uid);
+    }
+
+    public List<dev.mikita.userservice.entity.Service> getServices() {
+        return serviceRepository.findAll();
     }
 
     /**
@@ -53,17 +55,28 @@ public class ServiceService {
     }
 
     /**
-     * Update service dev . mikita . userservice . entity . service.
+     * Update service dev.mikita.userservice.entity.service.
      *
      * @param service the service
-     * @return the dev . mikita . userservice . entity . service
+     * @return the dev.mikita.userservice.entity.service
      * @throws FirebaseAuthException the firebase auth exception
      */
-    public dev.mikita.userservice.entity.Service updateService(dev.mikita.userservice.entity.Service service) throws FirebaseAuthException, ExecutionException, InterruptedException {
-        if (serviceRepository.find(service.getUid()) == null) {
-            throw new NotFoundException("Service not found.");
-        }
-        return serviceRepository.update(service);
+    public dev.mikita.userservice.entity.Service updateService(dev.mikita.userservice.entity.Service service)
+            throws FirebaseAuthException, ExecutionException, InterruptedException {
+        dev.mikita.userservice.entity.Service toUpdateService = serviceRepository.find(service.getUid());
+
+        ModelMapper modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setPropertyCondition(Conditions.isNotNull());
+        modelMapper.map(service, toUpdateService);
+
+        return serviceRepository.update(toUpdateService);
+    }
+
+    public void updateServiceStatus(String uid, UserStatus status)
+            throws ExecutionException, InterruptedException, FirebaseAuthException {
+        dev.mikita.userservice.entity.Service service = serviceRepository.find(uid);
+        service.setStatus(status);
+        serviceRepository.update(service);
     }
 
     /**

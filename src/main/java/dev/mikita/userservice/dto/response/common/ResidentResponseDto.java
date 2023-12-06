@@ -1,20 +1,16 @@
-package dev.mikita.userservice.dto.response;
+package dev.mikita.userservice.dto.response.common;
 
 import lombok.Data;
 
 /**
- * The type Resident private response dto.
+ * The type Resident public response dto.
  */
 @Data
-public class ResidentPrivateResponseDto {
+public class ResidentResponseDto {
     /**
      * The Uid.
      */
     String uid;
-    /**
-     * The Email.
-     */
-    String email;
     /**
      * The First name.
      */

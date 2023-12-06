@@ -3,10 +3,9 @@ package dev.mikita.userservice.entity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-/**
- * The type Moderator.
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class Moderator extends User {
+public class Analyst extends User {
+    private String name;
+    private String description;
 }

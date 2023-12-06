@@ -7,19 +7,21 @@ public enum UserRole {
     /**
      * Admin user role.
      */
-    ADMIN("ROLE_ADMIN"),
+    ADMIN("ADMIN"),
     /**
      * Moderator user role.
      */
-    MODERATOR("ROLE_MODERATOR"),
+    MODERATOR("MODERATOR"),
     /**
      * Resident user role.
      */
-    RESIDENT("ROLE_RESIDENT"),
+    RESIDENT("RESIDENT"),
     /**
      * Service user role.
      */
-    SERVICE("ROLE_SERVICE");
+    SERVICE("SERVICE"),
+    EMPLOYEE("EMPLOYEE"),
+    ANALYST("ANALYST");
 
     private final String name;
 

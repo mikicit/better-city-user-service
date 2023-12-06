@@ -1,12 +1,16 @@
 package dev.mikita.userservice.service;
 
 import com.google.firebase.auth.FirebaseAuthException;
+import dev.mikita.userservice.entity.Analyst;
 import dev.mikita.userservice.exception.NotFoundException;
 import dev.mikita.userservice.repository.ResidentRepository;
 import dev.mikita.userservice.entity.Resident;
 import dev.mikita.userservice.entity.UserStatus;
+import org.modelmapper.Conditions;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -15,7 +19,6 @@ import java.util.concurrent.ExecutionException;
 @Service
 public class ResidentService {
     private final ResidentRepository residentRepository;
-
 
     /**
      * Instantiates a new Resident service.
@@ -27,6 +30,10 @@ public class ResidentService {
         this.residentRepository = residentDao;
     }
 
+    public List<Resident> getResidents() throws ExecutionException, InterruptedException, FirebaseAuthException {
+        return residentRepository.findAll();
+    }
+
     /**
      * Gets resident.
      *
@@ -35,6 +42,7 @@ public class ResidentService {
      * @throws FirebaseAuthException the firebase auth exception
      * @throws ExecutionException    the execution exception
      * @throws InterruptedException  the interrupted exception
+     * TODO: Add method without checking status for moderators
      */
     public Resident getResident(String uid) throws FirebaseAuthException, ExecutionException, InterruptedException {
         Resident resident = residentRepository.find(uid);
@@ -61,11 +69,22 @@ public class ResidentService {
      * @return the resident
      * @throws FirebaseAuthException the firebase auth exception
      */
-    public Resident updateResident(Resident resident) throws FirebaseAuthException, ExecutionException, InterruptedException {
-        if (residentRepository.find(resident.getUid()) == null) {
-            throw new NotFoundException("Resident not found");
-        }
-        return residentRepository.update(resident);
+    public Resident updateResident(Resident resident)
+            throws FirebaseAuthException, ExecutionException, InterruptedException {
+        Resident toUpdateResident = residentRepository.find(resident.getUid());
+
+        ModelMapper modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setPropertyCondition(Conditions.isNotNull());
+        modelMapper.map(resident, toUpdateResident);
+
+        return residentRepository.update(toUpdateResident);
+    }
+
+    public void updateResidentStatus(String uid, UserStatus status)
+            throws ExecutionException, InterruptedException, FirebaseAuthException {
+        Resident resident = residentRepository.find(uid);
+        resident.setStatus(status);
+        residentRepository.update(resident);
     }
 
     /**

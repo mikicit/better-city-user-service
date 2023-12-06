@@ -1,4 +1,4 @@
-package dev.mikita.userservice.dto.response;
+package dev.mikita.userservice.dto.response.common;
 
 import lombok.Data;
 

@@ -11,4 +11,5 @@ import lombok.EqualsAndHashCode;
 public class Service extends User {
     private String name;
     private String description;
+    private String address;
 }
