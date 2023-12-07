@@ -25,7 +25,7 @@ public class AdminResidentController {
         this.residentService = residentService;
     }
 
-    @GetMapping
+    @GetMapping(path = "", produces = "application/json")
     @FirebaseAuthorization(roles = {"MODERATOR"})
     public ResponseEntity<List<ResidentModeratorResponseDto>> getResidents()
             throws ExecutionException, InterruptedException, FirebaseAuthException {
@@ -33,7 +33,7 @@ public class AdminResidentController {
                 residentService.getResidents(), new ParameterizedTypeReference<List<ResidentModeratorResponseDto>>() {}.getType()));
     }
 
-    @GetMapping("/{uid}")
+    @GetMapping(path = "/{uid}", produces = "application/json")
     @FirebaseAuthorization(roles = {"MODERATOR"})
     public ResponseEntity<ResidentModeratorResponseDto> getResident(@PathVariable String uid)
             throws ExecutionException, InterruptedException, FirebaseAuthException {

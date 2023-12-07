@@ -34,7 +34,7 @@ public class AnalystController {
                 analystService.getAnalyst(token.getUid()), AnalystAnalystResponseDto.class));
     }
 
-    @PutMapping(path = "/me", consumes = "application/json", produces = "application/json")
+    @PatchMapping(path = "/me", consumes = "application/json", produces = "application/json")
     @FirebaseAuthorization(roles = {"ANALYST"}, statuses = {"ACTIVE"})
     public ResponseEntity<AnalystAnalystResponseDto> updateCurrentAnalyst(
             @Valid @RequestBody UpdateAnalystAnalystRequestDto requestDto,

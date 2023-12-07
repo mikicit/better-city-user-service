@@ -112,7 +112,7 @@ public class DepartmentController {
         departmentService.deleteDepartment(uid);
     }
 
-    @GetMapping("/{uid}/employees")
+    @GetMapping(path = "/{uid}/employees", produces = "application/json")
     @FirebaseAuthorization(roles = {"SERVICE"}, statuses = {"ACTIVE"})
     public ResponseEntity<List<EmployeeResponseDto>> getDepartmentEmployees(
             @PathVariable String uid, HttpServletRequest request)

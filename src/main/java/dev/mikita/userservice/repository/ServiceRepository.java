@@ -183,6 +183,14 @@ public class ServiceRepository {
         collectionReference.document(uid).delete();
     }
 
+    public Long count() {
+        try {
+            return (long) collectionReference.get().get().size();
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+
     private Service makeService(UserRecord userRecord, DocumentSnapshot snapshot) {
         Service service = new Service();
         service.setUid(userRecord.getUid());

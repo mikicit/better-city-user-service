@@ -44,6 +44,10 @@ public class ServiceService {
         return serviceRepository.findAll();
     }
 
+    public Long getServicesCount() {
+        return serviceRepository.count();
+    }
+
     /**
      * Create service.
      *

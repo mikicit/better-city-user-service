@@ -54,7 +54,7 @@ public class ResidentController {
      * @throws ExecutionException    the execution exception
      * @throws InterruptedException  the interrupted exception
      */
-    @GetMapping("/{uid}")
+    @GetMapping(path = "/{uid}", produces = "application/json")
     @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<ResidentResponseDto> getResident(
             @PathVariable String uid,
@@ -92,7 +92,7 @@ public class ResidentController {
      * @throws FirebaseAuthException the firebase auth exception
      * @throws InterruptedException  the interrupted exception
      */
-    @GetMapping("/me")
+    @GetMapping(path = "/me", produces = "application/json")
     @FirebaseAuthorization(roles = {"RESIDENT"}, statuses = {"ACTIVE"})
     public ResponseEntity<ResidentResidentResponseDto> getCurrentResident(HttpServletRequest request)
             throws ExecutionException, FirebaseAuthException, InterruptedException {
@@ -101,7 +101,7 @@ public class ResidentController {
         return ResponseEntity.ok(new ModelMapper().map(resident, ResidentResidentResponseDto.class));
     }
 
-    @PatchMapping("/me")
+    @PatchMapping(path = "/me", consumes = "application/json", produces = "application/json")
     @FirebaseAuthorization(roles = {"RESIDENT"}, statuses = {"ACTIVE"})
     public ResponseEntity<ResidentResidentResponseDto> updateCurrentResident(
             @Valid @RequestBody UpdateResidentRequestDto requestDto,

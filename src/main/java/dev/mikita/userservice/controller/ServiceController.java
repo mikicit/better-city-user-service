@@ -4,6 +4,7 @@ import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import dev.mikita.userservice.annotation.FirebaseAuthorization;
 import dev.mikita.userservice.dto.request.common.UpdateServiceRequestDto;
+import dev.mikita.userservice.dto.response.common.CountResponseDto;
 import dev.mikita.userservice.dto.response.common.DepartmentResponseDto;
 import dev.mikita.userservice.dto.response.common.ServiceResponseDto;
 import dev.mikita.userservice.dto.response.common.EmployeeResponseDto;
@@ -66,7 +67,7 @@ public class ServiceController {
      * @throws ExecutionException    the execution exception
      * @throws InterruptedException  the interrupted exception
      */
-    @GetMapping("/{uid}")
+    @GetMapping(path = "/{uid}", produces = "application/json")
     @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<ServiceResponseDto> getService(@PathVariable String uid)
             throws FirebaseAuthException, ExecutionException, InterruptedException {
@@ -78,14 +79,25 @@ public class ServiceController {
         return ResponseEntity.ok(responsePublicServiceDto);
     }
 
-    @GetMapping
+    @GetMapping(path = "", produces = "application/json")
     @FirebaseAuthorization(roles = {"ANALYST"}, statuses = {"ACTIVE"})
     public ResponseEntity<List<ServiceResponseDto>> getServices() {
         return ResponseEntity.ok(new ModelMapper().map(
                 serviceService.getServices(), new ParameterizedTypeReference<List<ServiceResponseDto>>() {}.getType()));
     }
 
-    @GetMapping("/me")
+    // TODO: 07.12.2023 add filtration by status, return only active services
+    @GetMapping(path = "/count", produces = "application/json")
+    @FirebaseAuthorization(roles = {"ANALYST"}, statuses = {"ACTIVE"})
+    public ResponseEntity<CountResponseDto> getServicesCount() {
+        Long count = serviceService.getServicesCount();
+        CountResponseDto responseDto = new CountResponseDto();
+        responseDto.setCount(count);
+
+        return ResponseEntity.ok(responseDto);
+    }
+
+    @GetMapping(path = "/me", produces = "application/json")
     @FirebaseAuthorization(roles = {"SERVICE"}, statuses = {"ACTIVE"})
     public ResponseEntity<ServiceResponseDto> getCurrentService(
             HttpServletRequest request)
@@ -96,7 +108,7 @@ public class ServiceController {
         return ResponseEntity.ok(new ModelMapper().map(service, ServiceResponseDto.class));
     }
 
-    @PatchMapping("/me")
+    @PatchMapping(path = "/me", produces = "application/json", consumes = "application/json")
     @FirebaseAuthorization(roles = {"SERVICE"}, statuses = {"ACTIVE"})
     public ResponseEntity<ServiceResponseDto> updateCurrentService(
             @Valid @RequestBody UpdateServiceRequestDto requestDto,

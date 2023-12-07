@@ -17,8 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 
 @RestController
@@ -31,7 +29,7 @@ public class EmployeeController {
         this.employeeService = employeeService;
     }
 
-    @GetMapping("/{uid}")
+    @GetMapping(path = "/{uid}", produces = "application/json")
     @FirebaseAuthorization(roles = {"SERVICE"}, statuses = {"ACTIVE"})
     public ResponseEntity<EmployeeResponseDto> getEmployee(
             @PathVariable String uid,
@@ -95,7 +93,7 @@ public class EmployeeController {
         employeeService.deleteEmployee(uid);
     }
 
-    @GetMapping("/me")
+    @GetMapping(path = "/me", produces = "application/json")
     @FirebaseAuthorization(roles = {"EMPLOYEE"}, statuses = {"ACTIVE"})
     public ResponseEntity<EmployeeResponseDto> getCurrentEmployee(HttpServletRequest request)
             throws ExecutionException, FirebaseAuthException, InterruptedException {

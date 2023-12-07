@@ -27,14 +27,14 @@ public class AdminAnalystController {
         this.analystService = analystService;
     }
 
-    @GetMapping
+    @GetMapping(path = "", produces = "application/json")
     @FirebaseAuthorization(roles = {"MODERATOR"})
     public ResponseEntity<List<AnalystModeratorResponseDto>> getAnalysts() {
         return ResponseEntity.ok(new ModelMapper().map(
                 analystService.getAnalysts(), new ParameterizedTypeReference<List<AnalystModeratorResponseDto>>() {}.getType()));
     }
 
-    @GetMapping("/{uid}")
+    @GetMapping(path = "/{uid}", produces = "application/json")
     @FirebaseAuthorization(roles = {"MODERATOR"})
     public ResponseEntity<AnalystModeratorResponseDto> getAnalyst(@PathVariable String uid)
             throws ExecutionException, InterruptedException, FirebaseAuthException {
