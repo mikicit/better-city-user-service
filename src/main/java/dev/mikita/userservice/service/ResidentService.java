@@ -42,14 +42,9 @@ public class ResidentService {
      * @throws FirebaseAuthException the firebase auth exception
      * @throws ExecutionException    the execution exception
      * @throws InterruptedException  the interrupted exception
-     * TODO: Add method without checking status for moderators
      */
     public Resident getResident(String uid) throws FirebaseAuthException, ExecutionException, InterruptedException {
-        Resident resident = residentRepository.find(uid);
-        if (resident == null || resident.getStatus() == UserStatus.DELETED) {
-            throw new NotFoundException("Resident not found");
-        }
-        return resident;
+        return residentRepository.find(uid);
     }
 
     /**

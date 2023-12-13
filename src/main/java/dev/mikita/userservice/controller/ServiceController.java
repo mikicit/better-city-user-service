@@ -11,6 +11,8 @@ import dev.mikita.userservice.dto.response.common.EmployeeResponseDto;
 import dev.mikita.userservice.entity.Department;
 import dev.mikita.userservice.entity.Employee;
 import dev.mikita.userservice.entity.Service;
+import dev.mikita.userservice.entity.UserStatus;
+import dev.mikita.userservice.exception.NotFoundException;
 import dev.mikita.userservice.service.DepartmentService;
 import dev.mikita.userservice.service.EmployeeService;
 import dev.mikita.userservice.service.ServiceService;
@@ -72,6 +74,10 @@ public class ServiceController {
     public ResponseEntity<ServiceResponseDto> getService(@PathVariable String uid)
             throws FirebaseAuthException, ExecutionException, InterruptedException {
         Service service = serviceService.getService(uid);
+
+        if (service.getStatus() == UserStatus.DELETED || service.getStatus() == UserStatus.BANNED) {
+            throw new NotFoundException("Resident not found");
+        }
 
         ModelMapper modelMapper = new ModelMapper();
         ServiceResponseDto responsePublicServiceDto = modelMapper.map(service, ServiceResponseDto.class);

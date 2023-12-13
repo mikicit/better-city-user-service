@@ -4,18 +4,16 @@ spring:
 server:
   port: 8080
   forward-headers-strategy: framework
-resident:
-  collection:
-    name: residents
-service:
-  collection:
-    name: services
-employee:
-  collection:
-    name: employees
-departments:
-  collection:
-    name: departments
-analysts:
-  collection:
-    name: analysts
+firebase:
+  storage:
+    bucketName: "ctu-nss.appspot.com"
+  firestore:
+    collections:
+      resident: residents
+      service: services
+      employee: employees
+      department: departments
+      analyst: analysts
+  service:
+    account:
+      file: "keys/firebase-service-account-key.json"

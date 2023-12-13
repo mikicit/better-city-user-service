@@ -3,7 +3,6 @@ package dev.mikita.userservice.controller.admin;
 import com.google.firebase.auth.FirebaseAuthException;
 import dev.mikita.userservice.annotation.FirebaseAuthorization;
 import dev.mikita.userservice.dto.request.moderator.UpdateUserStatusModeratorRequestDto;
-import dev.mikita.userservice.dto.response.moderator.AnalystModeratorResponseDto;
 import dev.mikita.userservice.dto.response.moderator.ResidentModeratorResponseDto;
 import dev.mikita.userservice.service.ResidentService;
 import org.modelmapper.ModelMapper;

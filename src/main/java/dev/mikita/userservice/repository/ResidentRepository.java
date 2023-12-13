@@ -37,7 +37,7 @@ public class ResidentRepository {
     @Autowired
     public ResidentRepository(Firestore firestore,
                               FirebaseAuth firebaseAuth,
-                              @Value("${resident.collection.name}") String collectionName) {
+                              @Value("${firebase.firestore.collections.resident}") String collectionName) {
         this.firebaseAuth = firebaseAuth;
         this.collectionReference = firestore.collection(collectionName);
     }

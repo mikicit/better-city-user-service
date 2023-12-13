@@ -8,6 +8,8 @@ import dev.mikita.userservice.dto.request.common.UpdateResidentRequestDto;
 import dev.mikita.userservice.dto.response.resident.ResidentResidentResponseDto;
 import dev.mikita.userservice.dto.response.common.ResidentResponseDto;
 import dev.mikita.userservice.entity.Resident;
+import dev.mikita.userservice.entity.UserStatus;
+import dev.mikita.userservice.exception.NotFoundException;
 import dev.mikita.userservice.service.ResidentService;
 import dev.mikita.userservice.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,7 +50,6 @@ public class ResidentController {
      * Gets resident.
      *
      * @param uid     the uid
-     * @param request the request
      * @return the resident
      * @throws FirebaseAuthException the firebase auth exception
      * @throws ExecutionException    the execution exception
@@ -57,10 +58,13 @@ public class ResidentController {
     @GetMapping(path = "/{uid}", produces = "application/json")
     @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<ResidentResponseDto> getResident(
-            @PathVariable String uid,
-            HttpServletRequest request)
+            @PathVariable String uid)
             throws FirebaseAuthException, ExecutionException, InterruptedException {
         Resident resident = residentService.getResident(uid);
+
+        if (resident.getStatus() == UserStatus.DELETED || resident.getStatus() == UserStatus.BANNED) {
+            throw new NotFoundException("Resident not found");
+        }
 
         ModelMapper modelMapper = new ModelMapper();
         ResidentResponseDto responsePublicResidentDto = modelMapper.map(resident, ResidentResponseDto.class);

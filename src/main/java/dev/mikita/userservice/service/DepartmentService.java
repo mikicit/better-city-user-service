@@ -38,6 +38,7 @@ public class DepartmentService {
 
         ModelMapper modelMapper = new ModelMapper();
         modelMapper.getConfiguration().setPropertyCondition(Conditions.isNotNull());
+        modelMapper.getConfiguration().setCollectionsMergeEnabled(false);
         modelMapper.map(department, oldDepartment);
 
         return departmentRepository.update(oldDepartment);

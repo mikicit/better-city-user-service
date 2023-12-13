@@ -1,17 +1,15 @@
 package dev.mikita.userservice.service;
 
-import com.google.cloud.storage.*;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
 import com.google.firebase.auth.UserRecord.UpdateRequest;
-import com.google.firebase.cloud.StorageClient;
 import dev.mikita.userservice.exception.NotFoundException;
+import dev.mikita.userservice.util.FirebaseStorageUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
-import java.util.UUID;
 
 /**
  * The type User service.
@@ -19,18 +17,17 @@ import java.util.UUID;
 @Service
 public class UserService {
     private final FirebaseAuth firebaseAuth;
-    private final StorageClient firebaseStorage;
+    private final FirebaseStorageUtil firebaseStorageUtil;
 
     /**
      * Instantiates a new User service.
      *
      * @param firebaseAuth    the firebase auth
-     * @param firebaseStorage the firebase storage
      */
     @Autowired
-    public UserService(FirebaseAuth firebaseAuth, StorageClient firebaseStorage) {
+    public UserService(FirebaseAuth firebaseAuth, FirebaseStorageUtil firebaseStorageUtil) {
         this.firebaseAuth = firebaseAuth;
-        this.firebaseStorage = firebaseStorage;
+        this.firebaseStorageUtil = firebaseStorageUtil;
     }
 
     /**
@@ -48,43 +45,22 @@ public class UserService {
             throw new NotFoundException("User not found.");
         }
 
+        if (photoFile == null) {
+            throw new IOException("File is null.");
+        }
+
         // Get current photo URL
         String currentPhotoUrl = userRecord.getPhotoUrl();
-        Bucket bucket = firebaseStorage.bucket();
 
         // Delete photo from Firebase Storage if it exists
         if (currentPhotoUrl != null && !currentPhotoUrl.isEmpty()) {
-            String[] parts = currentPhotoUrl.split("/");
-            String filePath = parts[parts.length - 2] + "/" + parts[parts.length - 1];
-
-            Blob blob = bucket.get(filePath);
-
-            if (blob != null) {
-                blob.delete();
-            }
-
-            UpdateRequest updateRequest = new UpdateRequest(uid).setPhotoUrl(null);
-            firebaseAuth.updateUser(updateRequest);
-        } else {
-            throw new NotFoundException("User does not have a photo.");
+            firebaseStorageUtil.deleteFile(firebaseStorageUtil.parseFileName(currentPhotoUrl));
         }
 
-        // Upload new photo to Firebase Storage
-        // Photo name
-        String originalFilename = photoFile.getOriginalFilename();
-        if (originalFilename == null) {
-            throw new IllegalArgumentException("Original filename is null");
-        }
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String uniqueFilename = UUID.randomUUID() + fileExtension;
-
-        // Firebase Storage
-        String storagePath = "users/" + uniqueFilename;
-        bucket.create(storagePath, photoFile.getBytes(), photoFile.getContentType());
-        String photoUrl = "https://storage.googleapis.com/" + bucket.getName() + "/" + storagePath;
+        String storagePath = firebaseStorageUtil.uploadImage(photoFile, "users/%s/".formatted(uid));
 
         // Update user
-        UpdateRequest newPhotoRequest = new UpdateRequest(uid).setPhotoUrl(photoUrl);
+        UpdateRequest newPhotoRequest = new UpdateRequest(uid).setPhotoUrl(storagePath);
         firebaseAuth.updateUser(newPhotoRequest);
     }
 }

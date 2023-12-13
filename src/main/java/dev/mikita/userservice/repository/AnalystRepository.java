@@ -25,7 +25,7 @@ public class AnalystRepository {
     @Autowired
     public AnalystRepository(Firestore firestore,
                              FirebaseAuth firebaseAuth,
-                             @Value("${analysts.collection.name}") String collectionName) {
+                             @Value("${firebase.firestore.collections.analyst}") String collectionName) {
         this.firebaseAuth = firebaseAuth;
         this.collectionReference = firestore.collection(collectionName);
     }

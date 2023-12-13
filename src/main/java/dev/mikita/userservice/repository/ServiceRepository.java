@@ -39,7 +39,7 @@ public class ServiceRepository {
     @Autowired
     public ServiceRepository(FirebaseAuth firebaseAuth,
                              Firestore firestore,
-                             @Value("${service.collection.name}") String collectionName) {
+                             @Value("${firebase.firestore.collections.service}") String collectionName) {
         this.firebaseAuth = firebaseAuth;
         this.collectionReference = firestore.collection(collectionName);
     }
