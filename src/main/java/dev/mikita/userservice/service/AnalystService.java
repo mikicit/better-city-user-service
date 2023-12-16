@@ -4,6 +4,8 @@ import com.google.firebase.auth.FirebaseAuthException;
 import dev.mikita.userservice.entity.Analyst;
 import dev.mikita.userservice.entity.UserStatus;
 import dev.mikita.userservice.repository.AnalystRepository;
+import dev.mikita.userservice.util.Pageable;
+import dev.mikita.userservice.util.PagedResult;
 import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +22,8 @@ public class AnalystService {
         this.analystRepository = analystRepository;
     }
 
-    public List<Analyst> getAnalysts() {
-        return analystRepository.findAll();
+    public PagedResult<Analyst> getAnalysts(List<UserStatus> statuses, Pageable pageable) {
+        return analystRepository.findAll(statuses, pageable);
     }
 
     public Analyst getAnalyst(String uid) throws ExecutionException, InterruptedException, FirebaseAuthException {

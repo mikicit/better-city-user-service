@@ -3,6 +3,8 @@ package dev.mikita.userservice.service;
 import com.google.firebase.auth.FirebaseAuthException;
 import dev.mikita.userservice.repository.ServiceRepository;
 import dev.mikita.userservice.entity.UserStatus;
+import dev.mikita.userservice.util.Pageable;
+import dev.mikita.userservice.util.PagedResult;
 import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,8 +42,8 @@ public class ServiceService {
         return serviceRepository.find(uid);
     }
 
-    public List<dev.mikita.userservice.entity.Service> getServices() {
-        return serviceRepository.findAll();
+    public PagedResult<dev.mikita.userservice.entity.Service> getServices(List<UserStatus> statuses, Pageable pageable) {
+        return serviceRepository.findAll(statuses, pageable);
     }
 
     public Long getServicesCount() {

@@ -1,8 +1,6 @@
 package dev.mikita.userservice.repository;
 
-import com.google.cloud.firestore.CollectionReference;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.*;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
@@ -10,8 +8,12 @@ import dev.mikita.userservice.entity.Employee;
 import dev.mikita.userservice.entity.UserRole;
 import dev.mikita.userservice.entity.UserStatus;
 import dev.mikita.userservice.exception.NotFoundException;
+import dev.mikita.userservice.util.Pageable;
+import dev.mikita.userservice.util.PagedResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
@@ -51,17 +53,37 @@ public class EmployeeRepository {
         return employees;
     }
 
-    public List<Employee> findAllByServiceUid(String uid) throws ExecutionException, InterruptedException {
+    public PagedResult<Employee> findAllByServiceUid(String uid, Pageable pageable) {
         List<Employee> employees = new ArrayList<>();
-        collectionReference.whereEqualTo("serviceUid", uid).get().get().forEach(documentSnapshot -> {
-            try {
-                UserRecord userRecord = firebaseAuth.getUser(documentSnapshot.getId());
-                employees.add(makeEmployee(userRecord, documentSnapshot));
-            } catch (FirebaseAuthException e) {
-                throw new RuntimeException(e);
+
+        try {
+            // Total items query
+            Query totalItemsQuery = collectionReference.whereEqualTo("serviceUid", uid);
+
+            long totalItems = totalItemsQuery.get().get().size();
+            int totalPages = (int) Math.ceil((double) totalItems / pageable.getSize());
+
+            // Items query
+            Query query = collectionReference.whereEqualTo("serviceUid", uid)
+                    .offset(pageable.getOffset())
+                    .limit(pageable.getSize());
+
+            List<QueryDocumentSnapshot> documents = query.get().get().getDocuments();
+            for (QueryDocumentSnapshot snapshot : documents) {
+                UserRecord userRecord = firebaseAuth.getUser(snapshot.getId());
+
+                if (userRecord.getCustomClaims().isEmpty() ||
+                        !userRecord.getCustomClaims().get("role").toString().equals(UserRole.EMPLOYEE.toString())) {
+                    continue;
+                }
+
+                employees.add(makeEmployee(userRecord, snapshot));
             }
-        });
-        return employees;
+
+            return new PagedResult<>(employees, pageable.getPage(), totalItems, totalPages);
+        } catch (Exception e) {
+            return new PagedResult<>(employees, pageable.getPage(), 0, 0);
+        }
     }
 
     public void persist(Employee employee) throws FirebaseAuthException {
@@ -82,7 +104,14 @@ public class EmployeeRepository {
         firebaseAuth.setCustomUserClaims(userRecord.getUid(), customClaims);
 
         // Set Firestore Document
-        collectionReference.document(userRecord.getUid()).set(entityToMap(employee));
+        Map<String, Object> data = new HashMap<>();
+        data.put("firstName", employee.getFirstName());
+        data.put("lastName", employee.getLastName());
+        data.put("serviceUid", employee.getServiceUid());
+        data.put("departmentUid", employee.getDepartmentUid());
+        data.put("creationDate", new Date(userRecord.getUserMetadata().getCreationTimestamp()));
+
+        collectionReference.document(userRecord.getUid()).set(data);
     }
 
     public Employee update(Employee employee) throws FirebaseAuthException, ExecutionException, InterruptedException {
@@ -166,23 +195,15 @@ public class EmployeeRepository {
         employee.setPhoneNumber(userRecord.getPhoneNumber());
         employee.setPhoto(userRecord.getPhotoUrl());
         employee.setStatus(UserStatus.valueOf(userRecord.getCustomClaims().get("status").toString()));
-        employee.setRole(UserRole.valueOf(userRecord.getCustomClaims().get("role").toString()));
+        employee.setRole(UserRole.EMPLOYEE);
+        employee.setCreationDate(LocalDateTime.ofInstant(
+                Instant.ofEpochMilli(userRecord.getUserMetadata().getCreationTimestamp()),
+                java.time.ZoneId.systemDefault()));
         employee.setFirstName(snapshot.getString("firstName"));
         employee.setLastName(snapshot.getString("lastName"));
         employee.setDepartmentUid(snapshot.getString("departmentUid"));
         employee.setServiceUid(snapshot.getString("serviceUid"));
 
         return employee;
-    }
-
-    private Map<String, Object> entityToMap(Employee employee) {
-        Map<String, Object> data = new HashMap<>();
-
-        data.put("firstName", employee.getFirstName());
-        data.put("lastName", employee.getLastName());
-        data.put("serviceUid", employee.getServiceUid());
-        data.put("departmentUid", employee.getDepartmentUid());
-
-        return data;
     }
 }

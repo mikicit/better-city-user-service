@@ -6,6 +6,8 @@ import dev.mikita.userservice.exception.NotFoundException;
 import dev.mikita.userservice.repository.ResidentRepository;
 import dev.mikita.userservice.entity.Resident;
 import dev.mikita.userservice.entity.UserStatus;
+import dev.mikita.userservice.util.Pageable;
+import dev.mikita.userservice.util.PagedResult;
 import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,8 +32,8 @@ public class ResidentService {
         this.residentRepository = residentDao;
     }
 
-    public List<Resident> getResidents() throws ExecutionException, InterruptedException, FirebaseAuthException {
-        return residentRepository.findAll();
+    public PagedResult<Resident> getResidents(List<UserStatus> statuses, Pageable pageable) {
+        return residentRepository.findAll(statuses, pageable);
     }
 
     /**

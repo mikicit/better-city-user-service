@@ -1,9 +1,6 @@
 package dev.mikita.userservice.repository;
 
-import com.google.cloud.firestore.CollectionReference;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.QuerySnapshot;
+import com.google.cloud.firestore.*;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
@@ -13,11 +10,16 @@ import dev.mikita.userservice.entity.Resident;
 import dev.mikita.userservice.entity.UserRole;
 import dev.mikita.userservice.entity.UserStatus;
 import dev.mikita.userservice.exception.NotFoundException;
+import dev.mikita.userservice.util.Pageable;
+import dev.mikita.userservice.util.PagedResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 /**
  * The type Resident repository.
@@ -54,32 +56,64 @@ public class ResidentRepository {
     public Resident find(String uid) throws FirebaseAuthException, ExecutionException, InterruptedException {
         UserRecord userRecord = firebaseAuth.getUser(uid);
 
-        if (userRecord.getCustomClaims().isEmpty() || !userRecord.getCustomClaims().get("role").toString().equals("RESIDENT")) {
+        if (userRecord.getCustomClaims().isEmpty()
+                || !userRecord.getCustomClaims().get("role").toString().equals(UserRole.RESIDENT.toString())) {
             throw NotFoundException.create("Resident", uid);
         }
 
         return makeResident(userRecord, collectionReference.document(uid).get().get());
     }
 
-    public List<Resident> findAll() {
+    public PagedResult<Resident> findAll(List<UserStatus> statuses, Pageable pageable) {
         List<Resident> residents = new ArrayList<>();
 
         try {
-            QuerySnapshot collection = collectionReference.get().get();
+            // Total items query
+            Query totalItemsQuery;
+            if (statuses != null) {
+                totalItemsQuery = collectionReference.whereIn("status", statuses.stream()
+                        .map(UserStatus::toString)
+                        .collect(Collectors.toList()));
+            } else {
+                totalItemsQuery = collectionReference;
+            }
 
-            for (DocumentSnapshot snapshot : collection.getDocuments()) {
+            long totalItems = totalItemsQuery.get().get().size();
+            int totalPages = (int) Math.ceil((double) totalItems / pageable.getSize());
+
+            // Items query
+            Query query;
+            if (statuses != null) {
+                query = collectionReference.whereIn("status", statuses.stream()
+                        .map(UserStatus::toString)
+                        .collect(Collectors.toList()))
+                        .orderBy("status", pageable.getSortDirection())
+                        .offset(pageable.getOffset())
+                        .limit(pageable.getSize());
+            } else {
+                query = collectionReference
+                    .orderBy(pageable.getSortBy(), pageable.getSortDirection())
+                    .offset(pageable.getOffset())
+                    .limit(pageable.getSize());
+            }
+
+            QuerySnapshot querySnapshot = query.get().get();
+            List<QueryDocumentSnapshot> documents = querySnapshot.getDocuments();
+
+            for (QueryDocumentSnapshot snapshot : documents) {
                 UserRecord userRecord = firebaseAuth.getUser(snapshot.getId());
 
-                if (userRecord.getCustomClaims().isEmpty() || !userRecord.getCustomClaims().get("role").toString().equals("RESIDENT")) {
+                if (userRecord.getCustomClaims().isEmpty() ||
+                        !userRecord.getCustomClaims().get("role").toString().equals(UserRole.RESIDENT.toString())) {
                     continue;
                 }
 
                 residents.add(makeResident(userRecord, snapshot));
             }
 
-            return residents;
+            return new PagedResult<>(residents, pageable.getPage(), totalItems, totalPages);
         } catch (Exception e) {
-            return residents;
+            return new PagedResult<>(residents, pageable.getPage(), 0, 0);
         }
     }
 
@@ -104,7 +138,13 @@ public class ResidentRepository {
         firebaseAuth.setCustomUserClaims(userRecord.getUid(), customClaims);
 
         // Set Firestore Document
-        collectionReference.document(userRecord.getUid()).set(entityToMap(resident));
+        Map<String, Object> data = new HashMap<>();
+        data.put("firstName", resident.getFirstName());
+        data.put("lastName", resident.getLastName());
+        data.put("creationDate", new Date(userRecord.getUserMetadata().getCreationTimestamp()));
+        data.put("status", UserStatus.ACTIVE.toString());
+
+        collectionReference.document(userRecord.getUid()).set(data);
     }
 
     /**
@@ -149,6 +189,10 @@ public class ResidentRepository {
             userData.put("lastName", resident.getLastName());
         }
 
+        if (!Objects.equals(resident.getStatus().toString(), snapshot.getString("status"))) {
+            userData.put("status", resident.getStatus().toString());
+        }
+
         // Update Custom Claims
         Map<String, Object> customClaims = new HashMap<>(userRecord.getCustomClaims());
 
@@ -184,21 +228,15 @@ public class ResidentRepository {
 
         resident.setUid(userRecord.getUid());
         resident.setEmail(userRecord.getEmail());
-        resident.setStatus(UserStatus.valueOf(userRecord.getCustomClaims().get("status").toString()));
+        resident.setStatus(UserStatus.valueOf(snapshot.getString("status")));
         resident.setPhoto(userRecord.getPhotoUrl());
-        resident.setRole(UserRole.valueOf(userRecord.getCustomClaims().get("role").toString()));
+        resident.setRole(UserRole.RESIDENT);
+        resident.setCreationDate(LocalDateTime.ofInstant(
+                Instant.ofEpochMilli(userRecord.getUserMetadata().getCreationTimestamp()),
+                java.time.ZoneId.systemDefault()));
         resident.setFirstName(snapshot.getString("firstName"));
         resident.setLastName(snapshot.getString("lastName"));
 
         return resident;
-    }
-
-    private Map<String, Object> entityToMap(Resident resident) {
-        Map<String, Object> data = new HashMap<>();
-
-        data.put("firstName", resident.getFirstName());
-        data.put("lastName", resident.getLastName());
-
-        return data;
     }
 }

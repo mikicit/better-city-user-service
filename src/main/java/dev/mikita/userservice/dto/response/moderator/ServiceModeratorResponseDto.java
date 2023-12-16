@@ -11,6 +11,7 @@ public class ServiceModeratorResponseDto {
     String phoneNumber;
     String name;
     String description;
+    String address;
     String photo;
     UserStatus status;
     LocalDateTime creationDate;

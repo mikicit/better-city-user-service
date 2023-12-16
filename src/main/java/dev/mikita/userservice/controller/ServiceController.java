@@ -1,13 +1,14 @@
 package dev.mikita.userservice.controller;
 
+import com.google.cloud.firestore.Query;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import dev.mikita.userservice.annotation.FirebaseAuthorization;
 import dev.mikita.userservice.dto.request.common.UpdateServiceRequestDto;
 import dev.mikita.userservice.dto.response.common.CountResponseDto;
 import dev.mikita.userservice.dto.response.common.DepartmentResponseDto;
-import dev.mikita.userservice.dto.response.common.ServiceResponseDto;
 import dev.mikita.userservice.dto.response.common.EmployeeResponseDto;
+import dev.mikita.userservice.dto.response.common.ServiceResponseDto;
 import dev.mikita.userservice.entity.Department;
 import dev.mikita.userservice.entity.Employee;
 import dev.mikita.userservice.entity.Service;
@@ -17,19 +18,24 @@ import dev.mikita.userservice.service.DepartmentService;
 import dev.mikita.userservice.service.EmployeeService;
 import dev.mikita.userservice.service.ServiceService;
 import dev.mikita.userservice.service.UserService;
+import dev.mikita.userservice.util.Pageable;
+import dev.mikita.userservice.util.PagedResult;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.BadRequestException;
+import lombok.Getter;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 /**
  * The type Service controller.
@@ -41,6 +47,50 @@ public class ServiceController {
     private final UserService userService;
     private final DepartmentService departmentService;
     private final EmployeeService employeeService;
+
+    @Getter
+    public enum ServiceOrderBy {
+        CREATION_DATE("creationDate"),
+        NAME("name"),
+        ADDRESS("address");
+        private final String fieldName;
+
+        ServiceOrderBy(String fieldName) {
+            this.fieldName = fieldName;
+        }
+    }
+
+    @Getter
+    public enum DepartmentOrderBy {
+        SERVICE_UID("serviceUid");
+        private final String fieldName;
+
+        DepartmentOrderBy(String fieldName) {
+            this.fieldName = fieldName;
+        }
+    }
+
+    @Getter
+    public enum EmployeeOrderBy {
+        SERVICE_UID("serviceUid");
+        private final String fieldName;
+
+        EmployeeOrderBy(String fieldName) {
+            this.fieldName = fieldName;
+        }
+    }
+
+    @Getter
+    public enum Order {
+        ASC("ASCENDING"),
+        DESC("DESCENDING");
+
+        private final String fieldName;
+
+        Order(String fieldName) {
+            this.fieldName = fieldName;
+        }
+    }
 
     /**
      * Instantiates a new Service controller.
@@ -87,12 +137,33 @@ public class ServiceController {
 
     @GetMapping(path = "", produces = "application/json")
     @FirebaseAuthorization(roles = {"ANALYST"}, statuses = {"ACTIVE"})
-    public ResponseEntity<List<ServiceResponseDto>> getServices() {
-        return ResponseEntity.ok(new ModelMapper().map(
-                serviceService.getServices(), new ParameterizedTypeReference<List<ServiceResponseDto>>() {}.getType()));
+    public ResponseEntity<Map<String, Object>> getServices(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(name = "order_by", required = false) ServiceOrderBy orderBy,
+            @RequestParam(required = false) Order order) {
+        // Pagination and sorting
+        if (orderBy == null) orderBy = ServiceOrderBy.CREATION_DATE;
+        if (order == null) order = Order.DESC;
+
+        Pageable pageable = new Pageable(page, size, orderBy.getFieldName(), Query.Direction.valueOf(order.getFieldName()));
+        PagedResult<Service> pageServices = serviceService.getServices(null, pageable);
+        List<Service> services = pageServices.items();
+
+        // Collect result
+        ModelMapper modelMapper = new ModelMapper();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("services", services.stream()
+                .map(service -> modelMapper.map(service, ServiceResponseDto.class))
+                .collect(Collectors.toList()));
+        response.put("currentPage", pageServices.currentPage());
+        response.put("totalItems", pageServices.totalItems());
+        response.put("totalPages", pageServices.totalPages());
+
+        return ResponseEntity.ok(response);
     }
 
-    // TODO: 07.12.2023 add filtration by status, return only active services
     @GetMapping(path = "/count", produces = "application/json")
     @FirebaseAuthorization(roles = {"ANALYST"}, statuses = {"ACTIVE"})
     public ResponseEntity<CountResponseDto> getServicesCount() {
@@ -157,21 +228,56 @@ public class ServiceController {
 
     @GetMapping(path = "/me/departments", produces = "application/json")
     @FirebaseAuthorization(roles = {"SERVICE"}, statuses = {"ACTIVE"})
-    public ResponseEntity<List<DepartmentResponseDto>> getDepartments(HttpServletRequest request)
+    public ResponseEntity<Map<String, Object>> getDepartments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request)
             throws ExecutionException, InterruptedException {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
-        List<Department> departments = departmentService.getDepartmentsByServiceUid(token.getUid());
-        return ResponseEntity.ok(new ModelMapper().map(
-                departments, new ParameterizedTypeReference<List<DepartmentResponseDto>>() {}.getType()));
+
+        // Pagination
+        Pageable pageable = new Pageable(page, size, DepartmentOrderBy.SERVICE_UID.getFieldName(), Query.Direction.valueOf(Order.DESC.getFieldName()));
+        PagedResult<Department> pageDepartments = departmentService.getDepartmentsByServiceUid(token.getUid(), pageable);
+        List<Department> departments = pageDepartments.items();
+
+        // Collect result
+        ModelMapper modelMapper = new ModelMapper();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("departments", departments.stream()
+                .map(service -> modelMapper.map(service, DepartmentResponseDto.class))
+                .collect(Collectors.toList()));
+        response.put("currentPage", pageDepartments.currentPage());
+        response.put("totalItems", pageDepartments.totalItems());
+        response.put("totalPages", pageDepartments.totalPages());
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping(path = "/me/employees", produces = "application/json")
     @FirebaseAuthorization(roles = {"SERVICE"}, statuses = {"ACTIVE"})
-    public ResponseEntity<List<EmployeeResponseDto>> getEmployees(HttpServletRequest request)
-            throws ExecutionException, InterruptedException {
+    public ResponseEntity<Map<String, Object>> getEmployees(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request) {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
-        List<Employee> employees = employeeService.getEmployeesByServiceUid(token.getUid());
-        return ResponseEntity.ok(new ModelMapper().map(
-                employees, new ParameterizedTypeReference<List<EmployeeResponseDto>>() {}.getType()));
+
+        // Pagination and sorting
+        Pageable pageable = new Pageable(page, size, EmployeeOrderBy.SERVICE_UID.getFieldName(), Query.Direction.valueOf(Order.DESC.getFieldName()));
+        PagedResult<Employee> pageEmployees = employeeService.getEmployeesByServiceUid(token.getUid(), pageable);
+        List<Employee> employees = pageEmployees.items();
+
+        // Collect result
+        ModelMapper modelMapper = new ModelMapper();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("employees", employees.stream()
+                .map(service -> modelMapper.map(service, EmployeeResponseDto.class))
+                .collect(Collectors.toList()));
+        response.put("currentPage", pageEmployees.currentPage());
+        response.put("totalItems", pageEmployees.totalItems());
+        response.put("totalPages", pageEmployees.totalPages());
+
+        return ResponseEntity.ok(response);
     }
 }

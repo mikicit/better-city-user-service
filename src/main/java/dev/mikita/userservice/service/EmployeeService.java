@@ -6,6 +6,8 @@ import dev.mikita.userservice.entity.Employee;
 import dev.mikita.userservice.exception.NotFoundException;
 import dev.mikita.userservice.repository.DepartmentRepository;
 import dev.mikita.userservice.repository.EmployeeRepository;
+import dev.mikita.userservice.util.Pageable;
+import dev.mikita.userservice.util.PagedResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -28,9 +30,8 @@ public class EmployeeService {
         return employeeRepository.find(uid);
     }
 
-    public List<Employee> getEmployeesByServiceUid(String serviceUid)
-            throws ExecutionException, InterruptedException {
-        return employeeRepository.findAllByServiceUid(serviceUid);
+    public PagedResult<Employee> getEmployeesByServiceUid(String serviceUid, Pageable pageable) {
+        return employeeRepository.findAllByServiceUid(serviceUid, pageable);
     }
 
     public List<Employee> getEmployeesByDepartmentUid(String departmentUid)

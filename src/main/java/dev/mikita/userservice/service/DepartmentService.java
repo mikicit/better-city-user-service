@@ -3,6 +3,8 @@ package dev.mikita.userservice.service;
 import com.google.firebase.auth.FirebaseAuthException;
 import dev.mikita.userservice.entity.Department;
 import dev.mikita.userservice.repository.DepartmentRepository;
+import dev.mikita.userservice.util.Pageable;
+import dev.mikita.userservice.util.PagedResult;
 import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -22,8 +24,9 @@ public class DepartmentService {
         return departmentRepository.find(uid);
     }
 
-    public List<Department> getDepartmentsByServiceUid(String serviceUid) throws ExecutionException, InterruptedException {
-        return departmentRepository.findByServiceUid(serviceUid);
+    public PagedResult<Department> getDepartmentsByServiceUid(String serviceUid, Pageable pageable)
+            throws ExecutionException, InterruptedException {
+        return departmentRepository.findByServiceUid(serviceUid, pageable);
     }
 
     public void createDepartment(String serviceUid, Department department) throws ExecutionException, InterruptedException {

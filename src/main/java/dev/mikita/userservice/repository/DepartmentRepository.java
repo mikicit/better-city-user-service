@@ -1,11 +1,11 @@
 package dev.mikita.userservice.repository;
 
-import com.google.cloud.firestore.CollectionReference;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.*;
 import com.google.firebase.auth.FirebaseAuthException;
 import dev.mikita.userservice.entity.Department;
 import dev.mikita.userservice.exception.NotFoundException;
+import dev.mikita.userservice.util.Pageable;
+import dev.mikita.userservice.util.PagedResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
@@ -24,12 +24,25 @@ public class DepartmentRepository {
         this.collectionReference = firestore.collection(collectionName);
     }
 
-    public List<Department> findByServiceUid(String uid) throws ExecutionException, InterruptedException {
+    public PagedResult<Department> findByServiceUid(String uid, Pageable pageable)
+            throws ExecutionException, InterruptedException {
         List<Department> departments = new ArrayList<>();
-        collectionReference.whereEqualTo("serviceUid", uid).get().get().forEach(documentSnapshot -> {
-            departments.add(snapshotToEntity(documentSnapshot));
-        });
-        return departments;
+
+        // Total items query
+        Query totalItemsQuery = collectionReference.whereEqualTo("serviceUid", uid);
+
+        long totalItems = totalItemsQuery.get().get().size();
+        int totalPages = (int) Math.ceil((double) totalItems / pageable.getSize());
+
+        // Items query
+        Query query = collectionReference.whereEqualTo("serviceUid", uid)
+                .offset(pageable.getOffset())
+                .limit(pageable.getSize());
+
+        List<QueryDocumentSnapshot> documents = query.get().get().getDocuments();
+        documents.forEach(document -> departments.add(snapshotToEntity(document)));
+
+        return new PagedResult<>(departments, pageable.getPage(), totalItems, totalPages);
     }
 
     public Department find(String uid) throws FirebaseAuthException, ExecutionException, InterruptedException {
@@ -92,7 +105,8 @@ public class DepartmentRepository {
         department.setAddress(snapshot.getString("address"));
         department.setPhoneNumber(snapshot.getString("phoneNumber"));
         department.setCreationDate(LocalDateTime.ofInstant(
-                Objects.requireNonNull(snapshot.getDate("creationDate")).toInstant(), ZoneId.systemDefault()));
+                Objects.requireNonNull(snapshot.getDate("creationDate")).toInstant(),
+                ZoneId.systemDefault()));
         department.setServiceUid(snapshot.getString("serviceUid"));
         department.setCategories((List<Long>) snapshot.get("categories"));
 
