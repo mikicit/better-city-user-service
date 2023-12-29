@@ -86,7 +86,7 @@ public class EmployeeController {
             throws AuthException, FirebaseAuthException, ExecutionException, InterruptedException {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
 
-        if (!employeeService.isEmployeeInService(uid, token.getUid())) {
+        if (employeeService.isEmployeeInService(uid, token.getUid())) {
             throw new AuthException("Unauthorized");
         }
 
