@@ -113,14 +113,14 @@ public class DepartmentController {
     }
 
     @GetMapping(path = "/{uid}/employees", produces = "application/json")
-    @FirebaseAuthorization(roles = {"SERVICE"}, statuses = {"ACTIVE"})
+    @FirebaseAuthorization(roles = {"SERVICE", "EMPLOYEE"}, statuses = {"ACTIVE"})
     public ResponseEntity<List<EmployeeResponseDto>> getDepartmentEmployees(
             @PathVariable String uid, HttpServletRequest request)
             throws AuthException, ExecutionException, FirebaseAuthException, InterruptedException {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
         Department department = departmentService.getDepartment(uid);
 
-        if (!token.getUid().equals(department.getServiceUid())) {
+        if (!token.getUid().equals(department.getServiceUid()) && !employeeService.isEmployeeInDepartment(token.getUid(), uid)) {
             throw new AuthException("Unauthorized");
         }
 
