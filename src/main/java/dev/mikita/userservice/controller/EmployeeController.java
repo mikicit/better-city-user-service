@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.concurrent.ExecutionException;
 
 @RestController
@@ -30,7 +31,7 @@ public class EmployeeController {
     }
 
     @GetMapping(path = "/{uid}", produces = "application/json")
-    @FirebaseAuthorization(roles = {"SERVICE"}, statuses = {"ACTIVE"})
+    @FirebaseAuthorization(roles = {"SERVICE", "EMPLOYEE"}, statuses = {"ACTIVE"})
     public ResponseEntity<EmployeeResponseDto> getEmployee(
             @PathVariable String uid,
             HttpServletRequest request)
@@ -38,7 +39,7 @@ public class EmployeeController {
         Employee employee = employeeService.getEmployee(uid);
 
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
-        if (!employee.getServiceUid().equals(token.getUid())) {
+        if (!employee.getServiceUid().equals(token.getUid()) && !employee.getUid().equals(token.getUid())) {
             throw new AuthException("Unauthorized");
         }
 
