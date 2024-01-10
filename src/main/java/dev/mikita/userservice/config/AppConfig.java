@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.mikita.userservice.util.PointDeserializer;
 import dev.mikita.userservice.util.PointSerializer;
+import dev.mikita.userservice.util.StringDtoSerializer;
 import org.locationtech.jts.geom.Point;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
@@ -60,6 +61,7 @@ public class AppConfig {
         ObjectMapper objectMapper = new ObjectMapper();
         SimpleModule module = new SimpleModule();
         module.addSerializer(Point.class, new PointSerializer());
+        module.addSerializer(String.class, new StringDtoSerializer());
         module.addDeserializer(Point.class, new PointDeserializer());
         objectMapper.registerModule(module);
         objectMapper.registerModule(new JavaTimeModule());
